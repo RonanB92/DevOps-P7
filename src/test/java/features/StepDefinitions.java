@@ -1,6 +1,7 @@
 package features;
 
 import io.cucumber.java.Before;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -11,14 +12,18 @@ import revolut.Person;
 public class StepDefinitions {
 
     private double topUpAmount;
+    private double sendAmount;
+    private boolean transferCancelled;
     //private String topUpMethod;
     PaymentService topUpMethod;
     Person danny;
+    Person rx;
 
     @Before//Before hooks run before the first step in each scenario
     public void setUp(){
         //We can use this to setup test data for each scenario
         danny = new Person("Danny");
+        rx = new Person("Rx");
     }
     @Given("Danny has {double} euro in his euro Revolut account")
     public void dannyHasEuroInHisEuroRevolutAccount(double startingBalance) {
@@ -62,5 +67,93 @@ public class StepDefinitions {
         //Assert
         Assert.assertEquals(expectedResult, actualResult,0);
         System.out.println("The new final balance is: " + actualResult);
+    }
+
+    //***************************** Send Money Feature *****************************
+
+    @Given("Danny has a balance of {double} euro in his euro Revolut account")
+    public void dannyHasABalanceOfEuroInHisEuroRevolutAccount(double startingBalance) {
+        danny.setAccountBalance(startingBalance);
+    }
+    @And("Danny selects {double} euro as the amount to send")
+    public void dannySelectsSendAmountEuroAsTheAmountToSend(double sendAmount) {
+        this.sendAmount = sendAmount;
+    }
+
+    @And("The receiver has a starting balance of {double}")
+    public void theReceiverHasAStartingBalanceOfRxStartBalance(double rxStartBalance) {
+        rx.setAccountBalance(rxStartBalance);
+    }
+
+    @When("Danny sends money")
+    public void dannySendsMoney() {
+        if (danny.getAccountBalance("EUR") >= sendAmount) {
+            //System.out.println("Danny account balance" + danny.getAccountBalance("EUR"));
+            danny.getAccount("EUR").subtractFunds(sendAmount);
+            rx.getAccount("EUR").addFunds(sendAmount);
+            transferCancelled = false;
+        } else {
+            //System.out.println("Danny account balance is " + danny.getAccountBalance("EUR") + "euro");
+            transferCancelled = true;
+        }
+    }
+
+    @Then("The new balance of his Revolut account should now be {double}")
+    public void theNewBalanceOfHisRevolutAccountShouldNowBeDannyNewBalance(double dannyNewBalance) {
+        //Arrange
+        double expectedResult = dannyNewBalance;
+        //Act
+        double actualResult = danny.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0.0001);
+        //System.out.println("Danny new final balance is: " + actualResult);
+    }
+
+    @And("The balance of the receivers Revolut account should now be {double}")
+    public void theBalanceOfTheReceiversRevolutAccountShouldNowBeRxNewBalance(double rxNewBalance) {
+        //Arrange
+        double expectedResult = rxNewBalance;
+        //Act
+        double actualResult = rx.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0);
+        //System.out.println("The new rx balance is: " + actualResult);
+    }
+
+    @Given("Danny has a balance of {double} euro in his Revolut account")
+    public void dannyHasABalanceOfEuroInHisRevolutAccount(double dannyStartingBalance) {
+        danny.setAccountBalance(dannyStartingBalance);
+    }
+
+    @Then("The transfer should be cancelled")
+    public void theTransferShouldBeCancelled() {
+        //Arrange
+        boolean expectedResult = true;
+        //Act
+        boolean actualResult = transferCancelled;
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult);
+    }
+
+    @And("The balance of Danny's Revolut account should remain {double}")
+    public void theBalanceOfDannySRevolutAccountShouldRemainDannyStartingBalance(double dannyStartBalance) {
+        //Arrange
+        double expectedResult = dannyStartBalance;
+        //Act
+        double actualResult = danny.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0);
+        //System.out.println("Danny new final balance is: " + actualResult);
+    }
+
+    @And("The balance of the receivers Revolut account should remain {double}")
+    public void theBalanceOfTheReceiversRevolutAccountShouldRemainRxStartingBalance(double rxStartBalance) {
+        //Arrange
+        double expectedResult = rxStartBalance;
+        //Act
+        double actualResult = rx.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0);
+        //System.out.println("The new rx balance is: " + actualResult);
     }
 }
