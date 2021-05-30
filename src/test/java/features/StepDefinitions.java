@@ -8,23 +8,29 @@ import io.cucumber.java.en.When;
 import org.junit.Assert;
 import revolut.PaymentService;
 import revolut.Person;
+import revolut.DebitCard;
 
 public class StepDefinitions {
 
     private double topUpAmount;
-    private double sendAmount;
-    private boolean transferCancelled;
+    private double transferAmount;
     //private String topUpMethod;
     PaymentService topUpMethod;
     Person danny;
     Person rx;
 
+    DebitCard bankCard = new DebitCard();
+
     @Before//Before hooks run before the first step in each scenario
-    public void setUp(){
+    public void setUp() {
         //We can use this to setup test data for each scenario
         danny = new Person("Danny");
-        rx = new Person("Rx");
+        rx = new Person("Receiver");
+
     }
+
+    //************** Add money to Revolut using Debit Card **************
+
     @Given("Danny has {double} euro in his euro Revolut account")
     public void dannyHasEuroInHisEuroRevolutAccount(double startingBalance) {
         //System.out.println("Danny has starting account balance of: " + String.valueOf(startingBalance));
@@ -49,10 +55,15 @@ public class StepDefinitions {
         topUpMethod = topUpSource;
     }
 
+    @And("Danny has {double} euro in his debit card")
+    public void dannyHasEuroInHisDebitCard(double debitStartBalance) {
+        bankCard.setBankBalance(debitStartBalance);
+    }
+
     @When("Danny tops up")
     public void danny_tops_up() {
         // Write code here that turns the phrase above into concrete actions
-        danny.getAccount("EUR").addFunds(topUpAmount);
+        danny.topUp(topUpAmount, bankCard, topUpMethod);
         //throw new io.cucumber.java.PendingException();
     }
 
@@ -65,7 +76,69 @@ public class StepDefinitions {
         //Act
         double actualResult = danny.getAccount("EUR").getBalance();
         //Assert
-        Assert.assertEquals(expectedResult, actualResult,0);
+        Assert.assertEquals(expectedResult, actualResult, 0);
+        System.out.println("The new final balance is: " + actualResult);
+    }
+
+    //************** Add various amounts to Revolut acc **************
+
+    @Given("Danny has a starting balance of {double}")
+    public void dannyHasAStartingBalanceOfStartBalance(double startBalance) {
+        danny.setAccountBalance(startBalance);
+    }
+
+    @When("Danny now tops up by {double}")
+    public void dannyNowTopsUpByTopUpAmount(double topUpAmount) {
+        danny.getAccount("EUR").addFunds(topUpAmount);
+    }
+
+    @Then("The balance in his euro account should be {double}")
+    public void theBalanceInHisEuroAccountShouldBeNewBalance(double newBalance) {
+        //Arrange
+        double expectedResult = newBalance;
+        //Act
+        double actualResult = danny.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0);
+        System.out.println("The new final balance is: " + actualResult);
+    }
+
+    //************** Payment Service rejects request **************
+
+    @Given("Danny has {double} euro in his Revolut account")
+    public void dannyHasEuroInHisRevolutAccount(double startingBalance) {
+        danny.setAccountBalance(startingBalance);
+    }
+
+    @And("Danny has {double} euro in his BankAccount")
+    public void dannyHasEuroInHisBankAccount(double bankBalance) {
+        bankCard.setBankBalance(bankBalance);
+    }
+
+    @Then("The balance in his Revolut account should remain {double} euro")
+    public void theBalanceInHisRevolutAccountShouldRemainEuro(double startingBalance) {
+        //Arrange
+        double expectedResult = startingBalance;
+        //Act
+        double actualResult = danny.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0);
+        System.out.println("The new final balance is: " + actualResult);
+    }
+
+    @And("Danny selects {double} euro as the top up amount")
+    public void dannySelectsEuroAsTheTopUpAmount(double topUpAmount) {
+        this.topUpAmount = topUpAmount;
+    }
+
+    @Then("The new balance of his Revolut account should be {double} euro")
+    public void theNewBalanceOfHisRevolutAccountShouldBeEuro(double newBalance) {
+        //Arrange
+        double expectedResult = newBalance;
+        //Act
+        double actualResult = danny.getAccount("EUR").getBalance();
+        //Assert
+        Assert.assertEquals(expectedResult, actualResult, 0);
         System.out.println("The new final balance is: " + actualResult);
     }
 
@@ -76,8 +149,8 @@ public class StepDefinitions {
         danny.setAccountBalance(startingBalance);
     }
     @And("Danny selects {double} euro as the amount to send")
-    public void dannySelectsSendAmountEuroAsTheAmountToSend(double sendAmount) {
-        this.sendAmount = sendAmount;
+    public void dannySelectsSendAmountEuroAsTheAmountToSend(double transferAmount) {
+        this.transferAmount = transferAmount;
     }
 
     @And("The receiver has a starting balance of {double}")
@@ -87,15 +160,7 @@ public class StepDefinitions {
 
     @When("Danny sends money")
     public void dannySendsMoney() {
-        if (danny.getAccountBalance("EUR") >= sendAmount) {
-            //System.out.println("Danny account balance" + danny.getAccountBalance("EUR"));
-            danny.getAccount("EUR").subtractFunds(sendAmount);
-            rx.getAccount("EUR").addFunds(sendAmount);
-            transferCancelled = false;
-        } else {
-            //System.out.println("Danny account balance is " + danny.getAccountBalance("EUR") + "euro");
-            transferCancelled = true;
-        }
+        danny.transferMoney(transferAmount, rx);
     }
 
     @Then("The new balance of his Revolut account should now be {double}")
@@ -130,7 +195,7 @@ public class StepDefinitions {
         //Arrange
         boolean expectedResult = true;
         //Act
-        boolean actualResult = transferCancelled;
+        boolean actualResult = danny.isTransferCancelled();
         //Assert
         Assert.assertEquals(expectedResult, actualResult);
     }
@@ -156,4 +221,5 @@ public class StepDefinitions {
         Assert.assertEquals(expectedResult, actualResult, 0);
         //System.out.println("The new rx balance is: " + actualResult);
     }
+
 }
